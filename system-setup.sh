@@ -5,7 +5,7 @@
 # Get the absolute path of this script on the system.
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
-exec > >(tee "$SCRIPTPATH.log") 2>&1
+# exec > >(tee "$SCRIPTPATH.log") 2>&1
 
 # Echo all the args so we can see how this script was invoked in the logs.
 echo -e "\n===== SCRIPT PARAMETERS ====="
