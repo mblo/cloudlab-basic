@@ -1,23 +1,113 @@
+#!/usr/bin/env python2.7
 """
 This profile uses a git repository based configuration
 """
 
-# Import the Portal object.
+import re
+import geni.aggregate.cloudlab as cloudlab
 import geni.portal as portal
-# Import the ProtoGENI library.
+import geni.rspec.emulab as emulab
 import geni.rspec.pg as pg
+import geni.urn as urn
 
+# Portal context is where parameters and the rspec request is defined.
+pc = portal.Context()
+
+# The possible set of base disk-images that this cluster can be booted with.
+# The second field of every tupule is what is displayed on the cloudlab
+# dashboard.
+images = [ ("UBUNTU16-64-STD", "Ubuntu 16.04") ]
+
+# The possible set of node-types this cluster can be configured with. Currently
+# only m510 machines are supported.
+hardware_types = [ ("m510", "m510 (CloudLab Utah, 8-Core Intel Xeon D-1548)")
+                   #,("d430", "d430 (Emulab, 8-Core Intel Xeon E5-2630v3)")
+                   ]
 # Create a portal context.
 pc = portal.Context()
+
+pc.defineParameter("image", "Disk Image",
+        portal.ParameterType.IMAGE, images[0], images,
+        "Specify the base disk image that all the nodes of the cluster " +\
+        "should be booted with.")
+
+pc.defineParameter("hardware_type", "Hardware Type",
+       portal.ParameterType.NODETYPE, hardware_types[0], hardware_types)
+
+pc.defineParameter("username", "Username",
+        portal.ParameterType.STRING, "", None,
+        "Username for which all user-specific software will be configured.")
+
+# Default the cluster size to 5 nodes (minimum requires to support a
+# replication factor of 3 and an independent coordinator).
+pc.defineParameter("num_worker", "Cluster Size (# workers)",
+        portal.ParameterType.INTEGER, 6, [],
+        "Specify the number of worker servers. Note that the total " +\
+        "number of servers in the experiment will be this number + 2 (one " +\
+        "additional server which acts as a jumphost and one additional " +\
+        "server which acts as experiment controller). To check " +\
+        "availability of nodes, visit " +\
+        "\"https://www.cloudlab.us/cluster-graphs.php\"")
+
+# Size of partition to allocate for local disk storage.
+pc.defineParameter("local_storage_size", "Size of Node Local Storage Partition",
+        portal.ParameterType.STRING, "20GB", [],
+        "Size of local disk partition to allocate for node-local storage.")
+
+params = pc.bindParameters()
 
 # Create a Request object to start building the RSpec.
 request = pc.makeRequestRSpec()
 
-# Add a raw PC to the request.
-node = request.RawPC("node")
+# Create a dedicated network for the experiment
+testlan = request.LAN("explan")
+testlan.best_effort = True
+testlan.vlan_tagging = False
+testlan.link_multiplexing = False
+testlan.trivial_ok = False
+testlan.bandwidth = 1000
 
-# Install and execute a script that is contained in the repository.
-node.addService(pg.Execute(shell="sh", command="/local/repository/silly.sh"))
+
+# Setup node names
+HOSTNAME_JUMPHOST = "jumphost"
+HOSTNAME_EXP_CONTROLLER = "expctrl"
+
+node_local_storage_dir = "/dev/xvdca"
+
+hostnames = [HOSTNAME_JUMPHOST,HOSTNAME_EXP_CONTROLLER]
+for i in range(params.num_worker):
+    hostnames.append("worker%02d" % (i + 1))
+
+# Setup the cluster one node at a time.
+for host in hostnames:
+    node = request.RawPC(host)
+    if (host == HOSTNAME_JUMPHOST):
+        # public ipv4
+        node.routable_control_ip = True
+        # Install a private/public key on this node
+        node.installRootKeys(True, True)
+    else:
+        # NO public ipv4
+        node.routable_control_ip = False
+        # Install a public key on this node
+        node.installRootKeys(False, True)
+
+    node.hardware_type = params.hardware_type
+    node.disk_image = urn.Image(cloudlab.Utah, "emulab-ops:%s" % params.image)
+
+    node.addService(pg.Execute(shell="sh",
+        command="sudo /local/repository/system-setup.sh %s %s %s" % \
+        (node_local_storage_dir, params.username,
+        params.num_worker)))
+
+    # All nodes in the cluster connect to clan.
+    n_iface = node.addInterface("exp_iface")
+    testlan.addInterface(n_iface)
+
+    local_storage_bs = node.Blockstore(host + "_local_storage_bs",
+        node_local_storage_dir)
+    local_storage_bs.size = params.local_storage_size
+
 
 # Print the RSpec to the enclosing page.
 pc.printRequestRSpec(request)
