@@ -23,6 +23,7 @@ images = [ ("UBUNTU16-64-STD", "Ubuntu 16.04") ]
 hardware_types = [ ("m510", "m510 (CloudLab Utah, 8-Core Intel Xeon D-1548)")
                    #,("d430", "d430 (Emulab, 8-Core Intel Xeon E5-2630v3)")
                    ]
+
 # Create a portal context.
 pc = portal.Context()
 
@@ -43,7 +44,7 @@ pc.defineParameter("username", "Username",
 pc.defineParameter("num_worker", "Cluster Size (# workers)",
         portal.ParameterType.INTEGER, 6, [],
         "Specify the number of worker servers. Note that the total " +\
-        "number of servers in the experiment will be this number + 2 (one " +\
+        "number of servers in the experiment will be this number + #tor-switches/2 + 2 (one " +\
         "additional server which acts as a jumphost and one additional " +\
         "server which acts as experiment controller). To check " +\
         "availability of nodes, visit " +\
@@ -90,24 +91,6 @@ core.trivial_ok = False
 core.bandwidth = 999
 core.latency = 0.1
 
-aggregation = []
-for i in range(int(params.num_tor)/2):
-    testlan = request.LAN("agg%02d" % (i+1))
-    testlan.best_effort = True
-    testlan.vlan_tagging = False
-    testlan.link_multiplexing = False
-    testlan.trivial_ok = False
-    testlan.bandwidth = 999
-    testlan.latency = 0.1
-
-    testlan.addNode(tors[i*2])
-    testlan.addNode(tors[i*2+1])
-
-    core.addNode(testlan)
-
-    aggregation.append(testlan)
-
-
 # Setup node names
 HOSTNAME_JUMPHOST = "jumphost"
 HOSTNAME_EXP_CONTROLLER = "expctrl"
@@ -143,6 +126,35 @@ for idx, host in enumerate(hostnames):
     local_storage_bs = node.Blockstore(host + "_local_storage_bs",
         node_local_storage_dir)
     local_storage_bs.size = params.local_storage_size
+
+if params.num_tor > 2:
+    # Setup the cluster one node at a time.
+    TODO
+    for idx in range(int(params.num_tor)/2):
+        node = request.RawPC(host)
+        if (host == HOSTNAME_JUMPHOST):
+            # public ipv4
+            node.routable_control_ip = True
+        else:
+            # NO public ipv4
+            node.routable_control_ip = False
+
+        node.hardware_type = params.hardware_type
+        node.disk_image = urn.Image(cloudlab.Utah, "emulab-ops:%s" % params.image)
+
+        node.addService(pg.Execute(shell="sh",
+            command="sudo /local/repository/system-setup.sh %s %s %s" % \
+            (node_local_storage_dir, params.username,
+            params.num_worker)))
+
+        # All nodes in the cluster connect to clan.
+        n_iface = node.addInterface("exp_iface")
+        tors[idx%params.num_tor].addInterface(n_iface)
+
+        local_storage_bs = node.Blockstore(host + "_local_storage_bs",
+            node_local_storage_dir)
+        local_storage_bs.size = params.local_storage_size
+
 
 
 # Print the RSpec to the enclosing page.
