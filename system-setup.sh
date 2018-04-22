@@ -1,9 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Script for setting up the cluster after initial booting and configuration by
 # CloudLab.
 
 # Get the absolute path of this script on the system.
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+
+exec > >(tee "$SCRIPTPATH.log") 2>&1
 
 # Echo all the args so we can see how this script was invoked in the logs.
 echo -e "\n===== SCRIPT PARAMETERS ====="
@@ -73,7 +75,7 @@ do
 done
 
 echo -e "\n===== SETTING UP SSH BETWEEN NODES ====="
-ssh_dir=/home/$USERNAME/.ssh
+ssh_dir=/users/$USERNAME/.ssh
 /usr/bin/geni-get key > $ssh_dir/id_rsa
 chmod 600 $ssh_dir/id_rsa
 chown $USERNAME: $ssh_dir/id_rsa
@@ -98,7 +100,7 @@ do
     echo "Waiting for $host to come up..."
   done
   echo $(ssh $host "hostname -i")" "$host-ctrl >> /etc/hosts
-  echo $(ssh $host "hostname -i")" "$host-ctrl >> /home/$USERNAME/$NODES_TXT
+  echo $(ssh $host "hostname -i")" "$host-ctrl >> /users/$USERNAME/$NODES_TXT
 done
 
 
