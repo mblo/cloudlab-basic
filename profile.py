@@ -76,8 +76,8 @@ tors = []
 for i in range(params.num_tor):
     testlan = request.LAN("tor%02d" % (i+1))
     testlan.best_effort = True
-    testlan.vlan_tagging = False
-    testlan.link_multiplexing = False
+    testlan.vlan_tagging = True
+    testlan.link_multiplexing = True
     testlan.trivial_ok = True
     testlan.bandwidth = 999
     testlan.latency = 0.1
@@ -85,8 +85,8 @@ for i in range(params.num_tor):
 
 core = request.LAN("core")
 core.best_effort = True
-core.vlan_tagging = False
-core.link_multiplexing = False
+core.vlan_tagging = True
+core.link_multiplexing = True
 core.trivial_ok = False
 core.bandwidth = 999
 core.latency = 0.1
