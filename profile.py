@@ -100,6 +100,9 @@ node_local_storage_dir = "/dev/xvdca"
 hostnames = [HOSTNAME_JUMPHOST,HOSTNAME_EXP_CONTROLLER]
 for i in range(params.num_worker):
     hostnames.append("worker%02d" % (i + 1))
+aggnames = []
+for i in range(int(params.num_tor)/2):
+    aggnames.append("agg%02d" % (i + 1))
 
 # Setup the cluster one node at a time.
 for idx, host in enumerate(hostnames):
@@ -115,9 +118,9 @@ for idx, host in enumerate(hostnames):
     node.disk_image = urn.Image(cloudlab.Utah, "emulab-ops:%s" % params.image)
 
     node.addService(pg.Execute(shell="sh",
-        command="sudo /local/repository/system-setup.sh %s %s %s" % \
+        command="sudo /local/repository/system-setup.sh %s %s %s %s" % \
         (node_local_storage_dir, params.username,
-        params.num_worker)))
+        params.num_worker, len(aggnames))))
 
     # All nodes in the cluster connect to clan.
     n_iface = node.addInterface("exp_iface")
@@ -127,34 +130,25 @@ for idx, host in enumerate(hostnames):
         node_local_storage_dir)
     local_storage_bs.size = params.local_storage_size
 
-if params.num_tor > 2:
-    # Setup the cluster one node at a time.
-    TODO
-    for idx in range(int(params.num_tor)/2):
-        node = request.RawPC(host)
-        if (host == HOSTNAME_JUMPHOST):
-            # public ipv4
-            node.routable_control_ip = True
-        else:
-            # NO public ipv4
-            node.routable_control_ip = False
 
-        node.hardware_type = params.hardware_type
-        node.disk_image = urn.Image(cloudlab.Utah, "emulab-ops:%s" % params.image)
+for idx, host in enumerate(aggnames):
+    node = request.RawPC(host)
+    node.routable_control_ip = False
+    node.hardware_type = params.hardware_type
+    node.disk_image = urn.Image(cloudlab.Utah, "emulab-ops:%s" % params.image)
 
-        node.addService(pg.Execute(shell="sh",
-            command="sudo /local/repository/system-setup.sh %s %s %s" % \
-            (node_local_storage_dir, params.username,
-            params.num_worker)))
+    node.addService(pg.Execute(shell="sh",
+        command="sudo /local/repository/agg-setup.sh %s" % \
+        (params.username)))
 
-        # All nodes in the cluster connect to clan.
-        n_iface = node.addInterface("exp_iface")
-        tors[idx%params.num_tor].addInterface(n_iface)
+    # All nodes in the cluster connect to clan.
+    n_iface_l = node.addInterface("c-left")
+    n_iface_r = node.addInterface("c-right")
+    n_iface_c = node.addInterface("c-core")
 
-        local_storage_bs = node.Blockstore(host + "_local_storage_bs",
-            node_local_storage_dir)
-        local_storage_bs.size = params.local_storage_size
-
+    tors[idx*2].addInterface(n_iface_l)
+    tors[idx*2+1].addInterface(n_iface_r)
+    core.addInterface(n_iface_c)
 
 
 # Print the RSpec to the enclosing page.

@@ -12,14 +12,8 @@ echo
 
 # === Parameters decided by profile.py ===
 # RCNFS partition that will be exported via NFS and used as a shared home
-# directory for cluster users.
-NODE_LOCAL_STORAGE_DIR=$1
 # Account in which various software should be setup.
-USERNAME=$2
-# Number of worker machines in the cluster.
-NUM_WORKER=$3
-# Number of aggregation switches in the cluster.
-NUM_AGG=$4
+USERNAME=$1
 
 # === Paarameters decided by this script. ===
 # Directory where the NFS partition will be mounted on NFS clients
@@ -28,7 +22,6 @@ NUM_AGG=$4
 # Other variables
 KERNEL_RELEASE=`uname -r`
 UBUNTU_RELEASE=`lsb_release --release | awk '{print $2}'`
-NODES_TXT="hosts.txt"
 
 # === Here goes configuration that's performed on every boot. ===
 
@@ -51,7 +44,7 @@ fi
 # Common utilities
 echo -e "\n===== INSTALLING COMMON UTILITIES ====="
 apt-get update
-apt-get --assume-yes install vim htop python2.7 python-requests openjdk-8-jre ack-grep python-minimal
+apt-get --assume-yes install vim htop openvswitch-switch
 
 # === Configuration settings for all machines ===
 # Make vim the default editor.
@@ -72,50 +65,14 @@ do
   chsh -s /bin/bash $user
 done
 
-echo -e "\n===== SETTING UP SSH BETWEEN NODES ====="
-ssh_dir=/home/$USERNAME/.ssh
-/usr/bin/geni-get key > $ssh_dir/id_rsa
-chmod 600 $ssh_dir/id_rsa
-chown $USERNAME: $ssh_dir/id_rsa
-ssh-keygen -y -f $ssh_dir/id_rsa > $ssh_dir/id_rsa.pub
-cat $ssh_dir/id_rsa.pub >> $ssh_dir/authorized_keys
-chmod 644 $ssh_dir/authorized_keys
-
-# Add machines to /etc/hosts
-echo -e "\n===== ADDING HOSTS TO /ETC/HOSTS ====="
-hostArray=("jumphost" "expctrl")
-for i in $(seq 1 $NUM_WORKER)
-do
-  host=$(printf "worker%02d" $i)
-  hostArray=("${hostArray[@]}" "$host")
-done
-
-for host in ${hostArray[@]}
-do
-  while ! ssh $host "hostname -i"
-  do
-    sleep 1
-    echo "Waiting for $host to come up..."
-  done
-  echo $(ssh $host "hostname -i")" "$host-ctrl >> /etc/hosts
-  echo $(ssh $host "hostname -i")" "$host-ctrl >> /home/$USERNAME/$NODES_TXT
-done
 
 
-# jumphost specific configuration.
-if [ $(hostname --short) == "jumphost" ]
-then
 
-  echo -e "\n===== SETTING UP AUTOMATIC TMUX ON JUMPHOST ====="
-  # Make tmux start automatically when logging into rcmaster
-  cat >> /etc/profile.d/etc.sh <<EOM
 
-if [[ -z "\$TMUX" ]] && [ "\$SSH_CONNECTION" != "" ]
-then
-  tmux attach-session -t ssh_tmux || tmux new-session -s ssh_tmux
-fi
-EOM
-fi
+
+
+
+
 
 # Mark that setup has finished. This script is actually run again after a
 # reboot, so we need to mark that we've already setup this machine and catch
