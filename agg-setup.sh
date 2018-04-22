@@ -1,9 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Script for setting up the cluster after initial booting and configuration by
 # CloudLab.
 
 # Get the absolute path of this script on the system.
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+
+exec > >(tee "$SCRIPTPATH/agg.log") 2>&1
 
 # Echo all the args so we can see how this script was invoked in the logs.
 echo -e "\n===== SCRIPT PARAMETERS ====="
@@ -44,7 +46,8 @@ fi
 # Common utilities
 echo -e "\n===== INSTALLING COMMON UTILITIES ====="
 apt-get update
-apt-get --assume-yes install vim htop openvswitch-switch
+apt-get --assume-yes install vim htop bmon
+# openvswitch-switch
 
 # === Configuration settings for all machines ===
 # Make vim the default editor.
@@ -64,13 +67,6 @@ for user in $(ls /users/)
 do
   chsh -s /bin/bash $user
 done
-
-
-
-
-
-
-
 
 
 

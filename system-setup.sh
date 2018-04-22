@@ -5,7 +5,7 @@
 # Get the absolute path of this script on the system.
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
-# exec > >(tee "$SCRIPTPATH.log") 2>&1
+exec > >(tee "$SCRIPTPATH/system.log") 2>&1
 
 # Echo all the args so we can see how this script was invoked in the logs.
 echo -e "\n===== SCRIPT PARAMETERS ====="
@@ -43,11 +43,13 @@ NODES_TXT="hosts.txt"
 # then it should go inside this if statement.
 if [ -f /local/setup_done ]
 then
-
+  echo "setup already done"
   exit 0
 fi
 
 # === Here goes configuration that happens once on the first boot. ===
+
+chown "$USERNAME:$USERNAME" "$NODE_LOCAL_STORAGE_DIR"
 
 # === Software dependencies that need to be installed. ===
 # Common utilities
