@@ -26,6 +26,7 @@ NUM_WORKER=$3
 # Other variables
 KERNEL_RELEASE=`uname -r`
 UBUNTU_RELEASE=`lsb_release --release | awk '{print $2}'`
+NODES_TXT="hosts.txt"
 
 # === Here goes configuration that's performed on every boot. ===
 
@@ -78,30 +79,30 @@ ssh-keygen -y -f $ssh_dir/id_rsa > $ssh_dir/id_rsa.pub
 cat $ssh_dir/id_rsa.pub >> $ssh_dir/authorized_keys
 chmod 644 $ssh_dir/authorized_keys
 
+# Add machines to /etc/hosts
+echo -e "\n===== ADDING HOSTS TO /ETC/HOSTS ====="
+hostArray=("jumphost" "expctrl")
+for i in $(seq 1 $NUM_WORKER)
+do
+  host=$(printf "worker%02d" $i)
+  hostArray=("${hostArray[@]}" "$host")
+done
+
+for host in ${hostArray[@]}
+do
+  while ! ssh $host "hostname -i"
+  do
+    sleep 1
+    echo "Waiting for $host to come up..."
+  done
+  echo $(ssh $host "hostname -i")" "$host-ctrl >> /etc/hosts
+  echo $(ssh $host "hostname -i")" "$host-ctrl >> /home/$USERNAME/$NODES_TXT
+done
+
+
 # jumphost specific configuration.
 if [ $(hostname --short) == "jumphost" ]
 then
-
-
-
-  # Add machines on control network to /etc/hosts
-  echo -e "\n===== ADDING CONTROL NETWORK HOSTS TO /ETC/HOSTS ====="
-  hostArray=("jumphost" "expctrl")
-  for i in $(seq 1 $NUM_WORKER)
-  do
-    host=$(printf "worker%02d" $i)
-    hostArray=("${hostArray[@]}" "$host")
-  done
-
-  for host in ${hostArray[@]}
-  do
-    while ! ssh $host "hostname -i"
-    do
-      sleep 1
-      echo "Waiting for $host to come up..."
-    done
-    echo $(ssh $host "hostname -i")" "$host-ctrl >> /etc/hosts
-  done
 
   echo -e "\n===== SETTING UP AUTOMATIC TMUX ON JUMPHOST ====="
   # Make tmux start automatically when logging into rcmaster

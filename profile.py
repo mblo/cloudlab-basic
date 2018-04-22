@@ -49,6 +49,13 @@ pc.defineParameter("num_worker", "Cluster Size (# workers)",
         "availability of nodes, visit " +\
         "\"https://www.cloudlab.us/cluster-graphs.php\"")
 
+#
+pc.defineParameter("num_tor", "Cluster Size (# tor)",
+        portal.ParameterType.INTEGER, 2, [],
+        "Specify the number of tor switches. Note that the total " +\
+        "number of tor swithces must be a multiple of two. " +\
+        "Worker id % #tor gives the tor of a worker" )
+
 # Size of partition to allocate for local disk storage.
 pc.defineParameter("local_storage_size", "Size of Node Local Storage Partition",
         portal.ParameterType.STRING, "20GB", [],
@@ -56,16 +63,49 @@ pc.defineParameter("local_storage_size", "Size of Node Local Storage Partition",
 
 params = pc.bindParameters()
 
+if params.num_tor < 2 or (params.num_tor % 2) != 0:
+    portal.context.reportError( portal.ParameterError( "You must specify the number of tor switches to be a multiple of two (and >=2)." ) )
+
 # Create a Request object to start building the RSpec.
 request = pc.makeRequestRSpec()
 
 # Create a dedicated network for the experiment
-testlan = request.LAN("explan")
-testlan.best_effort = True
-testlan.vlan_tagging = False
-testlan.link_multiplexing = False
-testlan.trivial_ok = False
-testlan.bandwidth = 1000
+
+tors = []
+for i in range(params.num_tor):
+    testlan = request.LAN("tor%02d" % (i+1))
+    testlan.best_effort = True
+    testlan.vlan_tagging = False
+    testlan.link_multiplexing = False
+    testlan.trivial_ok = True
+    testlan.bandwidth = 999
+    testlan.latency = 0.1
+    tors.append(testlan)
+
+core = request.LAN("core")
+core.best_effort = True
+core.vlan_tagging = False
+core.link_multiplexing = False
+core.trivial_ok = False
+core.bandwidth = 999
+core.latency = 0.1
+
+aggregation = []
+for i in range(int(params.num_tor)/2):
+    testlan = request.LAN("agg%02d" % (i+1))
+    testlan.best_effort = True
+    testlan.vlan_tagging = False
+    testlan.link_multiplexing = False
+    testlan.trivial_ok = False
+    testlan.bandwidth = 999
+    testlan.latency = 0.1
+
+    testlan.addNode(tors[i*2])
+    testlan.addNode(tors[i*2+1])
+
+    core.addNode(testlan)
+
+    aggregation.append(testlan)
 
 
 # Setup node names
@@ -79,18 +119,14 @@ for i in range(params.num_worker):
     hostnames.append("worker%02d" % (i + 1))
 
 # Setup the cluster one node at a time.
-for host in hostnames:
+for idx, host in enumerate(hostnames):
     node = request.RawPC(host)
     if (host == HOSTNAME_JUMPHOST):
         # public ipv4
         node.routable_control_ip = True
-        # Install a private/public key on this node
-        node.installRootKeys(True, True)
     else:
         # NO public ipv4
         node.routable_control_ip = False
-        # Install a public key on this node
-        node.installRootKeys(False, True)
 
     node.hardware_type = params.hardware_type
     node.disk_image = urn.Image(cloudlab.Utah, "emulab-ops:%s" % params.image)
@@ -102,7 +138,7 @@ for host in hostnames:
 
     # All nodes in the cluster connect to clan.
     n_iface = node.addInterface("exp_iface")
-    testlan.addInterface(n_iface)
+    tors[idx%params.num_tor].addInterface(n_iface)
 
     local_storage_bs = node.Blockstore(host + "_local_storage_bs",
         node_local_storage_dir)
