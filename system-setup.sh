@@ -47,6 +47,9 @@ then
   exit 0
 fi
 
+#adduser --disabled-password --gecos ""  test
+#sudo passwd -d test
+
 # === Here goes configuration that happens once on the first boot. ===
 
 chown "$USERNAME:$USERNAME" "$NODE_LOCAL_STORAGE_DIR"
@@ -101,8 +104,12 @@ do
     sleep 1
     echo "Waiting for $host to come up..."
   done
-  echo $(ssh $host "hostname -i")" "$host-ctrl >> /etc/hosts
-  echo $(ssh $host "hostname -i")" "$host-ctrl >> /users/$USERNAME/$NODES_TXT
+  # ctrlip localip hostname
+  if [ "$host" == "jumphost"]
+  then
+    continue
+  fi
+  echo $(ssh $host "hostname -i")" "$(getent hosts $host | awk '{ print $1 ; exit }')" $host"  >> /users/$USERNAME/$NODES_TXT
 done
 
 

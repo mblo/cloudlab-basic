@@ -83,13 +83,13 @@ for i in range(params.num_tor):
     testlan.latency = 0.1
     tors.append(testlan)
 
-# core = request.LAN("core")
-# core.best_effort = True
-# core.vlan_tagging = False
-# core.link_multiplexing = True
-# core.trivial_ok = False
-# core.bandwidth = 999
-# core.latency = 0.1
+core = request.LAN("core")
+core.best_effort = True
+core.vlan_tagging = False
+core.link_multiplexing = True
+core.trivial_ok = True
+core.bandwidth = 999
+core.latency = 0.1
 
 # Setup node names
 HOSTNAME_JUMPHOST = "jumphost"
@@ -144,11 +144,11 @@ for idx, host in enumerate(aggnames):
     # All nodes in the cluster connect to clan.
     n_iface_l = node.addInterface("c-left")
     n_iface_r = node.addInterface("c-right")
-    # n_iface_c = node.addInterface("c-core")
+    n_iface_c = node.addInterface("c-core")
 
     tors[idx*2].addInterface(n_iface_l)
     tors[idx*2+1].addInterface(n_iface_r)
-    # core.addInterface(n_iface_c)
+    core.addInterface(n_iface_c)
 
 
 # Print the RSpec to the enclosing page.
