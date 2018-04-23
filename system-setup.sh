@@ -108,7 +108,7 @@ chmod 644 $ssh_dir/authorized_keys
 
 # Add machines to /etc/hosts
 echo -e "\n===== ADDING HOSTS TO /ETC/HOSTS ====="
-hostArray=(HOSTNAME_JUMPHOST HOSTNAME_EXP_CONTROLLER)
+hostArray=("$HOSTNAME_JUMPHOST" "$HOSTNAME_EXP_CONTROLLER")
 for i in $(seq 1 $NUM_WORKER)
 do
   host=$(printf "worker%02d" $i)
