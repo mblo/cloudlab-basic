@@ -38,7 +38,7 @@ DATASETS_DIR=/datasets
 # Other variables
 KERNEL_RELEASE=`uname -r`
 UBUNTU_RELEASE=`lsb_release --release | awk '{print $2}'`
-NODES_TXT="hosts.txt"
+NODES_TXT="nodes.txt"
 USER_EXP="ubuntu"
 HOSTNAME_JUMPHOST="jumphost"
 HOSTNAME_EXP_CONTROLLER="expctrl"
