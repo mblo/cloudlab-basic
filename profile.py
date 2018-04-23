@@ -107,6 +107,7 @@ dataset_urns = []
 if (params.dataset_urns != ""):
     dataset_urns = params.dataset_urns.split(" ")
 
+nfs_shared_home_export_dir = "/local/nfs"
 nfs_datasets_export_dir = "/remote"
 
 # Add datasets to the dataset-lan
@@ -192,12 +193,6 @@ for idx, host in enumerate(aggnames):
     tors[idx*2+1].addInterface(n_iface_r)
     core.addInterface(n_iface_c)
 
-rbs = request.RemoteBlockstore(
-        "dataset01",
-        "/remote/dataset",
-        "if1")
-rbs.dataset = params.dataset_urn
-core.addInterface(rbs.interface)
 
 # Print the RSpec to the enclosing page.
 pc.printRequestRSpec(request)
