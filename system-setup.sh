@@ -84,12 +84,12 @@ done
 echo -e "\n===== SETTING UP SSH BETWEEN NODES ====="
 ssh_dir=/home/$USERNAME/.ssh
 mkdir "$ssh_dir"
-chmod 700 "$ssh_dir"
 /usr/bin/geni-get key > $ssh_dir/id_rsa
-chmod 600 $ssh_dir/id_rsa
-chown $USERNAME: $ssh_dir/id_rsa
 ssh-keygen -y -f $ssh_dir/id_rsa > $ssh_dir/id_rsa.pub
 cat $ssh_dir/id_rsa.pub >> $ssh_dir/authorized_keys
+chown $USERNAME: $ssh_dir/id_rsa
+chmod 600 $ssh_dir/id_rsa
+chown $USERNAME: $ssh_dir/authorized_keys
 chmod 644 $ssh_dir/authorized_keys
 
 # Add machines to /etc/hosts
@@ -103,7 +103,7 @@ done
 
 for host in ${hostArray[@]}
 do
-  while ! ssh $USERNAME@$host "hostname -i"
+  while ! nc -z -v -w5 $host 22
   do
     sleep 1
     echo "Waiting for $host to come up..."
@@ -113,7 +113,7 @@ do
   then
     continue
   fi
-  echo $(ssh $USERNAME@$host "hostname -i")" "$(getent hosts $host | awk '{ print $1 ; exit }')" $host"  >> /home/$USERNAME/$NODES_TXT
+  echo $(getent hosts $host | awk '{ print $1 ; exit }')" "$(getent hosts $host | awk '{ print $1 ; exit }')" $host"  >> /home/$USERNAME/$NODES_TXT
 done
 
 
