@@ -62,6 +62,10 @@ pc.defineParameter("local_storage_size", "Size of Node Local Storage Partition",
         portal.ParameterType.STRING, "20GB", [],
         "Size of local disk partition to allocate for node-local storage.")
 
+pc.defineParameter("dataset_urn", "Datasets",
+        portal.ParameterType.STRING, "", None,
+        "Dataset to mount.")
+
 params = pc.bindParameters()
 
 if params.num_tor < 2 or (params.num_tor % 2) != 0:
@@ -155,6 +159,12 @@ for idx, host in enumerate(aggnames):
     tors[idx*2+1].addInterface(n_iface_r)
     core.addInterface(n_iface_c)
 
+rbs = request.RemoteBlockstore(
+        "dataset01",
+        "/remote/dataset",
+        "if1")
+rbs.dataset = params.dataset_urn
+core.addInterface(rbs.interface)
 
 # Print the RSpec to the enclosing page.
 pc.printRequestRSpec(request)

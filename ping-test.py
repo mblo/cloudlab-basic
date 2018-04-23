@@ -12,6 +12,6 @@ with open(HOSTS) as f:
   content = f.readlines()
   for l in content:
     for ip in l.split(" "):
-      print(".. test host={0}".format(ip))
-      r = subprocess.call(["ssh", "ubuntu@{0}".format(ip), "ping -c 3 -i 5 {0} && iperf3 -c {0}".format(MYIP)])
+      print(".. test host={0}".format(l))
+      r = subprocess.call(["ssh", "ubuntu@{0}".format(ip), "ping -c 5 -i .2 {0} && iperf3 -c {0} -t 4".format(MYIP)])
       break
