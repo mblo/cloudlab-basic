@@ -36,7 +36,7 @@ pc.defineParameter("hardware_type", "Hardware Type",
        portal.ParameterType.NODETYPE, hardware_types[0], hardware_types)
 
 pc.defineParameter("username", "Username",
-        portal.ParameterType.STRING, "", None,
+        portal.ParameterType.STRING, "ubuntu", None,
         "Username for which all user-specific software will be configured.")
 
 # Default the cluster size to 5 nodes (minimum requires to support a
@@ -79,8 +79,8 @@ for i in range(params.num_tor):
     testlan.vlan_tagging = False
     testlan.link_multiplexing = True
     testlan.trivial_ok = True
-    testlan.bandwidth = 999
-    testlan.latency = 0.1
+    testlan.bandwidth = 100
+    testlan.latency = 0.08
     tors.append(testlan)
 
 core = request.LAN("core")
@@ -88,7 +88,7 @@ core.best_effort = True
 core.vlan_tagging = False
 core.link_multiplexing = True
 core.trivial_ok = True
-core.bandwidth = 999
+core.bandwidth = 100
 core.latency = 0.1
 
 # Setup node names
@@ -97,9 +97,11 @@ HOSTNAME_EXP_CONTROLLER = "expctrl"
 
 node_local_storage_dir = "/dev/xvdca"
 
-hostnames = [HOSTNAME_JUMPHOST,HOSTNAME_EXP_CONTROLLER]
+hostnames = []
 for i in range(params.num_worker):
     hostnames.append("worker%02d" % (i + 1))
+hostnames += [HOSTNAME_JUMPHOST,HOSTNAME_EXP_CONTROLLER]
+
 aggnames = []
 for i in range(int(params.num_tor)/2):
     aggnames.append("agg%02d" % (i + 1))
@@ -124,7 +126,10 @@ for idx, host in enumerate(hostnames):
 
     # All nodes in the cluster connect to clan.
     n_iface = node.addInterface("exp_iface")
-    tors[idx%params.num_tor].addInterface(n_iface)
+    if (host not in [HOSTNAME_JUMPHOST, HOSTNAME_EXP_CONTROLLER]):
+        tors[idx%params.num_tor].addInterface(n_iface)
+    else:
+        core.addInterface(n_iface)
 
     local_storage_bs = node.Blockstore(host + "_local_storage_bs",
         node_local_storage_dir)

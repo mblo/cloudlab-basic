@@ -47,9 +47,6 @@ then
   exit 0
 fi
 
-#adduser --disabled-password --gecos ""  test
-#sudo passwd -d test
-
 # === Here goes configuration that happens once on the first boot. ===
 
 chown "$USERNAME:$USERNAME" "$NODE_LOCAL_STORAGE_DIR"
@@ -58,7 +55,12 @@ chown "$USERNAME:$USERNAME" "$NODE_LOCAL_STORAGE_DIR"
 # Common utilities
 echo -e "\n===== INSTALLING COMMON UTILITIES ====="
 apt-get update
-apt-get --assume-yes install vim htop python2.7 python-requests openjdk-8-jre ack-grep python-minimal
+apt-get --assume-yes install vim htop python2.7 python-requests openjdk-8-jre ack-grep python-minimal whois
+
+# create new admin user
+useradd -p `mkpasswd "test"` -d /home/"$USERNAME" -m -g users -s /bin/bash "$USERNAME"
+passwd -d $USERNAME
+gpasswd -a $USERNAME root
 
 # === Configuration settings for all machines ===
 # Make vim the default editor.
@@ -74,13 +76,15 @@ EOM
 
 # Change default shell to bash for all users on all machines
 echo -e "\n===== CHANGE USERS SHELL TO BASH ====="
-for user in $(ls /users/)
+for user in $(ls /home/)
 do
   chsh -s /bin/bash $user
 done
 
 echo -e "\n===== SETTING UP SSH BETWEEN NODES ====="
-ssh_dir=/users/$USERNAME/.ssh
+ssh_dir=/home/$USERNAME/.ssh
+mkdir "$ssh_dir"
+chmod 700 "$ssh_dir"
 /usr/bin/geni-get key > $ssh_dir/id_rsa
 chmod 600 $ssh_dir/id_rsa
 chown $USERNAME: $ssh_dir/id_rsa
@@ -99,7 +103,7 @@ done
 
 for host in ${hostArray[@]}
 do
-  while ! ssh $host "hostname -i"
+  while ! ssh $USERNAME@$host "hostname -i"
   do
     sleep 1
     echo "Waiting for $host to come up..."
@@ -109,7 +113,7 @@ do
   then
     continue
   fi
-  echo $(ssh $host "hostname -i")" "$(getent hosts $host | awk '{ print $1 ; exit }')" $host"  >> /users/$USERNAME/$NODES_TXT
+  echo $(ssh $USERNAME@$host "hostname -i")" "$(getent hosts $host | awk '{ print $1 ; exit }')" $host"  >> /home/$USERNAME/$NODES_TXT
 done
 
 
