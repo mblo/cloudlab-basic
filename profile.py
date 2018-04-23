@@ -174,9 +174,10 @@ for idx, host in enumerate(hostnames):
     else:
         core.addInterface(n_iface)
 
-    local_storage_bs = node.Blockstore(host + "_local_storage_bs",
-        node_local_storage_dir)
-    local_storage_bs.size = params.local_storage_size
+    if (host != HOSTNAME_JUMPHOST):
+        local_storage_bs = node.Blockstore(host + "_local_storage_bs",
+            node_local_storage_dir)
+        local_storage_bs.size = params.local_storage_size
 
 
 for idx, host in enumerate(aggnames):
