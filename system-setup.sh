@@ -1,11 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Script for setting up the cluster after initial booting and configuration by
 # CloudLab.
 
 # Get the absolute path of this script on the system.
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
-
-exec > >(tee "$SCRIPTPATH/system.log") 2>&1
 
 # Echo all the args so we can see how this script was invoked in the logs.
 echo -e "\n===== SCRIPT PARAMETERS ====="
@@ -13,68 +11,34 @@ echo $@
 echo
 
 # === Parameters decided by profile.py ===
-# RCNFS partition that will be exported via NFS and used as a shared home
-# directory for cluster users.
-NODE_LOCAL_STORAGE_DIR=$1
-CLOUDLAB_USER=$2
-# Number of worker machines in the cluster.
-NUM_WORKER=$3
-# Number of aggregation switches in the cluster.
-NUM_AGG=$4
 # Local partition on NFS server that will be exported via NFS and used as a
 # shared home directory for cluster users.
-NFS_SHARED_HOME_EXPORT_DIR=$5
+NFS_SHARED_HOME_EXPORT_DIR=$1
 # NFS directory where remote blockstore datasets are mounted and exported via
 # NFS to be shared by all nodes in the cluster.
-NFS_DATASETS_EXPORT_DIR=$6
-
+NFS_DATASETS_EXPORT_DIR=$2
+# Account in which various software should be setup.
+USERNAME=$3
+# Number of nodes in the cluster.
+NUM_NODES=$4
 
 # === Paarameters decided by this script. ===
 # Directory where the NFS partition will be mounted on NFS clients
+SHARED_HOME_DIR=/shome
+# Directory where NFS shared datasets will be mounted on NFS clients
 DATASETS_DIR=/datasets
-
-# Other variables
-KERNEL_RELEASE=`uname -r`
-UBUNTU_RELEASE=`lsb_release --release | awk '{print $2}'`
-NODES_TXT="hosts.txt"
-USER_EXP="ubuntu"
-HOSTNAME_JUMPHOST="jumphost"
-HOSTNAME_EXP_CONTROLLER="expctrl"
-
-
-# === Here goes configuration that's performed on every boot. ===
-
-# nothing to do
-
-# Check if we've already complete setup before. If so, the buck stops here.
-# Everything above will be executed on every boot. Everything below this will be
-# executed on the first boot only. Therefore any soft state that's reset after a
-# reboot should be set above. If the soft state can only be set after setup,
-# then it should go inside this if statement.
-if [ -f /local/setup_done ]
-then
-  echo "setup already done"
-  exit 0
-fi
-
-# === Here goes configuration that happens once on the first boot. ===
-
 
 # === Software dependencies that need to be installed. ===
 # Common utilities
 echo -e "\n===== INSTALLING COMMON UTILITIES ====="
 apt-get update
-apt-get --assume-yes install vim htop python2.7 python-requests openjdk-8-jre ack-grep python-minimal whois iperf3 nfs-kernel-server nfs-common
-
-# create new admin user
-useradd -p `mkpasswd "test"` -d /home/"$USER_EXP" -m -g users -s /bin/bash "$USER_EXP"
-passwd -d $USER_EXP
-gpasswd -a $USER_EXP root
-
-chown "$USER_EXP:" "$NODE_LOCAL_STORAGE_DIR"
-
+apt-get --assume-yes install mosh vim tmux pdsh tree axel htop ctags
+# NFS
+echo -e "\n===== INSTALLING NFS PACKAGES ====="
+apt-get --assume-yes install nfs-kernel-server nfs-common
 
 # === Configuration settings for all machines ===
+echo -e "\n===== SETTING SYSTEM WIDE PREFERENCES ====="
 # Make vim the default editor.
 cat >> /etc/profile.d/etc.sh <<EOM
 export EDITOR=vim
@@ -86,54 +50,10 @@ cat >> /etc/ssh/ssh_config <<EOM
     StrictHostKeyChecking no
 EOM
 
-# Change default shell to bash for all users on all machines
-echo -e "\n===== CHANGE USERS SHELL TO BASH ====="
-for user in $(ls /home/)
-do
-  chsh -s /bin/bash $user
-done
-
-echo -e "\n===== SETTING UP SSH BETWEEN NODES ====="
-ssh_dir=/home/$USER_EXP/.ssh
-mkdir "$ssh_dir"
-/usr/bin/geni-get key > $ssh_dir/id_rsa
-chown $USER_EXP: $ssh_dir/id_rsa
-chmod 600 $ssh_dir/id_rsa
-
-ssh-keygen -y -f $ssh_dir/id_rsa > $ssh_dir/id_rsa.pub
-cat $ssh_dir/id_rsa.pub >> $ssh_dir/authorized_keys
-cat "/users/$CLOUDLAB_USER/.ssh/authorized_keys" >> $ssh_dir/authorized_keys
-chown $USER_EXP: $ssh_dir/authorized_keys
-chmod 644 $ssh_dir/authorized_keys
-
-# Add machines to /etc/hosts
-echo -e "\n===== ADDING HOSTS TO /ETC/HOSTS ====="
-hostArray=("$HOSTNAME_JUMPHOST" "$HOSTNAME_EXP_CONTROLLER")
-for i in $(seq 1 $NUM_WORKER)
-do
-  host=$(printf "worker%02d" $i)
-  hostArray=("${hostArray[@]}" "$host")
-done
-
-for host in ${hostArray[@]}
-do
-  while ! nc -z -v -w5 $host 22
-  do
-    sleep 1
-    echo "Waiting for $host to come up..."
-  done
-  # ctrlip localip hostname
-  if [ "$host" == HOSTNAME_JUMPHOST]
-  then
-    continue
-  fi
-  echo $(getent hosts $host | awk '{ print $1 ; exit }')" "$(getent hosts $host | awk '{ print $1 ; exit }')" $host"  >> /home/$USER_EXP/$NODES_TXT
-done
-
 # NFS specific setup here. NFS exports NFS_SHARED_HOME_EXPORT_DIR (used as
 # a shared home directory for all users), and also NFS_DATASETS_EXPORT_DIR
-# (mount point for CloudLab datasets to which cluster nodes need shared access).
-if [ $(hostname --short) == HOSTNAME_JUMPHOST ]
+# (mount point for CloudLab datasets to which cluster nodes need shared access). 
+if [ $(hostname --short) == "nfs" ]
 then
   echo -e "\n===== SETTING UP NFS EXPORTS ON NFS ====="
   # Make the file system rwx by all.
@@ -174,8 +94,8 @@ then
 fi
 
 echo -e "\n===== WAITING FOR NFS SERVER TO COMPLETE SETUP ====="
-# Wait until nfs is properly set up.
-while [ "$(ssh -i $ssh_dir/id_rsa $USER_EXP@$HOSTNAME_JUMPHOST "[ -f /local/setup-nfs-done ] && echo 1 || echo 0")" != "1" ]; do
+# Wait until nfs is properly set up. 
+while [ "$(ssh nfs "[ -f /local/setup-nfs-done ] && echo 1 || echo 0")" != "1" ]; do
   sleep 1
 done
 
@@ -189,26 +109,50 @@ echo "$nfs_clan_ip:$NFS_SHARED_HOME_EXPORT_DIR $SHARED_HOME_DIR nfs4 rw,sync,har
 mkdir $DATASETS_DIR; mount -t nfs4 $nfs_clan_ip:$NFS_DATASETS_EXPORT_DIR $DATASETS_DIR
 echo "$nfs_clan_ip:$NFS_DATASETS_EXPORT_DIR $DATASETS_DIR nfs4 rw,sync,hard,intr,addr=$my_clan_ip 0 0" >> /etc/fstab
 
-
-
-# jumphost specific configuration.
-if [ $(hostname --short) == HOSTNAME_JUMPHOST ]
+# Move user accounts onto the shared directory. The NFS server is responsible
+# for physically moving user files to shared folder. All other nodes just change
+# the home directory in /etc/passwd. This avoids the problem of all servers
+# trying to move files to the same place at the same time.
+if [ $(hostname --short) == "nfs" ]
 then
+  echo -e "\n===== MOVING USERS HOME DIRECTORY TO NFS HOME ====="
+  for user in $(ls /users/)
+  do
+    # Ensure that no processes by that user are running.
+    pkill -u $user
+    usermod --move-home --home $SHARED_HOME_DIR/$user $user
+  done
+else
+  echo -e "\n===== SETTING USERS HOME DIRECTORY TO NFS HOME ====="
+  for user in $(ls /users/)
+  do
+    # Ensure that no processes by that user are running.
+    pkill -u $user
+    usermod --home $SHARED_HOME_DIR/$user $user
+  done
+fi
 
-  echo -e "\n===== SETTING UP AUTOMATIC TMUX ON JUMPHOST ====="
-  # Make tmux start automatically when logging into rcmaster
-  cat >> /etc/profile.d/etc.sh <<EOM
-
-if [[ -z "\$TMUX" ]] && [ "\$SSH_CONNECTION" != "" ]
+# Setup password-less ssh between nodes
+if [ $(hostname --short) == "nfs" ]
 then
-  tmux attach-session -t ssh_tmux || tmux new-session -s ssh_tmux
-fi
-EOM
+  echo -e "\n===== SETTING UP SSH BETWEEN NODES ====="
+  for user in $(ls $SHARED_HOME_DIR)
+  do
+    ssh_dir=$SHARED_HOME_DIR/$user/.ssh
+    /usr/bin/geni-get key > $ssh_dir/id_rsa
+    chmod 600 $ssh_dir/id_rsa
+    chown $user: $ssh_dir/id_rsa
+    ssh-keygen -y -f $ssh_dir/id_rsa > $ssh_dir/id_rsa.pub
+    cat $ssh_dir/id_rsa.pub >> $ssh_dir/authorized_keys
+    chmod 644 $ssh_dir/authorized_keys
+  done
 fi
 
-# Mark that setup has finished. This script is actually run again after a
-# reboot, so we need to mark that we've already setup this machine and catch
-# this flag after a reboot to prevent ourselves from re-running everything.
-touch /local/setup_done
-
-echo -e "\n===== SYSTEM SETUP COMPLETE ====="
+# NFS specific configuration.
+if [ $(hostname --short) == "nfs" ]
+then
+  echo -e "\n===== RUNNING USER-SETUP SCRIPT FOR $USERNAME ====="
+  # Execute all user-specific setup in user's shared folder using nfs.
+  # This is to try and reduce network traffic during builds.
+  sudo --login -u $USERNAME $SCRIPTPATH/user-setup.sh
+fi
