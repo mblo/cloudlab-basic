@@ -102,6 +102,13 @@ core.trivial_ok = True
 core.bandwidth = "1G"
 core.latency = 0.1
 
+# Create a special network for connecting datasets to the nfs server.
+dslan = request.LAN("dslan")
+dslan.best_effort = True
+dslan.vlan_tagging = True
+dslan.link_multiplexing = True
+
+
 # Create array of the requested datasets
 dataset_urns = []
 if (params.dataset_urns != ""):
@@ -119,7 +126,7 @@ for i in range(len(dataset_urns)):
             nfs_datasets_export_dir + "/" + dataset_name,
             "if1")
     rbs.dataset = dataset_urn
-    core.addInterface(rbs.interface)
+    dslan.addInterface(rbs.interface)
 
 # Setup node names
 HOSTNAME_JUMPHOST = "jumphost"
@@ -148,6 +155,8 @@ for idx, host in enumerate(hostnames):
 
         nfs_bs = node.Blockstore(host + "_nfs_bs", nfs_shared_home_export_dir)
         nfs_bs.size = params.nfs_storage_size
+
+        dslan.addInterface(node.addInterface("if2"))
     else:
         # NO public ipv4
         node.routable_control_ip = False
