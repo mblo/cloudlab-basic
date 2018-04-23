@@ -16,8 +16,7 @@ echo
 # RCNFS partition that will be exported via NFS and used as a shared home
 # directory for cluster users.
 NODE_LOCAL_STORAGE_DIR=$1
-# Account in which various software should be setup.
-USERNAME=$2
+CLOUDLAB_USER=$2
 # Number of worker machines in the cluster.
 NUM_WORKER=$3
 # Number of aggregation switches in the cluster.
@@ -31,6 +30,7 @@ NUM_AGG=$4
 KERNEL_RELEASE=`uname -r`
 UBUNTU_RELEASE=`lsb_release --release | awk '{print $2}'`
 NODES_TXT="hosts.txt"
+USER_EXP="ubuntu"
 
 # === Here goes configuration that's performed on every boot. ===
 
@@ -49,18 +49,20 @@ fi
 
 # === Here goes configuration that happens once on the first boot. ===
 
-chown "$USERNAME:$USERNAME" "$NODE_LOCAL_STORAGE_DIR"
 
 # === Software dependencies that need to be installed. ===
 # Common utilities
 echo -e "\n===== INSTALLING COMMON UTILITIES ====="
 apt-get update
-apt-get --assume-yes install vim htop python2.7 python-requests openjdk-8-jre ack-grep python-minimal whois
+apt-get --assume-yes install vim htop python2.7 python-requests openjdk-8-jre ack-grep python-minimal whois iperf3
 
 # create new admin user
-useradd -p `mkpasswd "test"` -d /home/"$USERNAME" -m -g users -s /bin/bash "$USERNAME"
-passwd -d $USERNAME
-gpasswd -a $USERNAME root
+useradd -p `mkpasswd "test"` -d /home/"$USER_EXP" -m -g users -s /bin/bash "$USER_EXP"
+passwd -d $USER_EXP
+gpasswd -a $USER_EXP root
+
+chown "$USER_EXP:" "$NODE_LOCAL_STORAGE_DIR"
+
 
 # === Configuration settings for all machines ===
 # Make vim the default editor.
@@ -82,14 +84,16 @@ do
 done
 
 echo -e "\n===== SETTING UP SSH BETWEEN NODES ====="
-ssh_dir=/home/$USERNAME/.ssh
+ssh_dir=/home/$USER_EXP/.ssh
 mkdir "$ssh_dir"
 /usr/bin/geni-get key > $ssh_dir/id_rsa
+chown $USER_EXP: $ssh_dir/id_rsa
+chmod 600 $ssh_dir/id_rsa
+
 ssh-keygen -y -f $ssh_dir/id_rsa > $ssh_dir/id_rsa.pub
 cat $ssh_dir/id_rsa.pub >> $ssh_dir/authorized_keys
-chown $USERNAME: $ssh_dir/id_rsa
-chmod 600 $ssh_dir/id_rsa
-chown $USERNAME: $ssh_dir/authorized_keys
+cat "/users/$CLOUDLAB_USER/.ssh/authorized_keys" >> $ssh_dir/authorized_keys
+chown $USER_EXP: $ssh_dir/authorized_keys
 chmod 644 $ssh_dir/authorized_keys
 
 # Add machines to /etc/hosts
@@ -113,7 +117,7 @@ do
   then
     continue
   fi
-  echo $(getent hosts $host | awk '{ print $1 ; exit }')" "$(getent hosts $host | awk '{ print $1 ; exit }')" $host"  >> /home/$USERNAME/$NODES_TXT
+  echo $(getent hosts $host | awk '{ print $1 ; exit }')" "$(getent hosts $host | awk '{ print $1 ; exit }')" $host"  >> /home/$USER_EXP/$NODES_TXT
 done
 
 

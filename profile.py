@@ -36,8 +36,8 @@ pc.defineParameter("hardware_type", "Hardware Type",
        portal.ParameterType.NODETYPE, hardware_types[0], hardware_types)
 
 pc.defineParameter("username", "Username",
-        portal.ParameterType.STRING, "ubuntu", None,
-        "Username for which all user-specific software will be configured.")
+        portal.ParameterType.STRING, "", None,
+        "Username of cloudlab account.")
 
 # Default the cluster size to 5 nodes (minimum requires to support a
 # replication factor of 3 and an independent coordinator).
