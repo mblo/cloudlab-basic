@@ -148,10 +148,6 @@ for idx, host in enumerate(hostnames):
 
         nfs_bs = node.Blockstore(host + "_nfs_bs", nfs_shared_home_export_dir)
         nfs_bs.size = params.nfs_storage_size
-        # Add this node to the dataset blockstore LAN.
-        if (len(dataset_urns) > 0):
-            core.addInterface(node.addInterface("if2"))
-
     else:
         # NO public ipv4
         node.routable_control_ip = False
