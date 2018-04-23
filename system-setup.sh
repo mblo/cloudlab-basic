@@ -174,6 +174,8 @@ then
   # Give it a second to start-up
   sleep 5
 
+
+
   # Use the existence of this file as a flag for other servers to know that
   # NFS is finished with its setup.
   > /local/setup-nfs-done
@@ -196,10 +198,11 @@ mkdir $DATASETS_DIR; mount -t nfs4 $nfs_clan_ip:$NFS_DATASETS_EXPORT_DIR $DATASE
 echo "$nfs_clan_ip:$NFS_DATASETS_EXPORT_DIR $DATASETS_DIR nfs4 rw,sync,hard,intr,addr=$my_clan_ip 0 0" >> /etc/fstab
 
 
-
 # jumphost specific configuration.
 if [ $(hostname --short) == "$HOSTNAME_JUMPHOST" ]
 then
+
+  chown -R $USER_EXP: "$DATASETS_DIR"
 
   echo -e "\n===== SETTING UP AUTOMATIC TMUX ON JUMPHOST ====="
   # Make tmux start automatically when logging into rcmaster
