@@ -13,7 +13,7 @@ echo $@
 echo
 
 # === Parameters decided by profile.py ===
-# RCNFS partition that will be exported via NFS and used as a shared home
+# partition that will be exported via NFS and used as a shared home
 # directory for cluster users.
 NODE_LOCAL_STORAGE_DIR=$1
 CLOUDLAB_USER=$2
@@ -129,7 +129,7 @@ do
     echo "Waiting for $host to come up..."
   done
   # ctrlip localip hostname
-  if [ "$host" == HOSTNAME_JUMPHOST]
+  if [ "$host" == "$HOSTNAME_JUMPHOST" ]
   then
     continue
   fi
@@ -139,7 +139,7 @@ done
 # NFS specific setup here. NFS exports NFS_SHARED_HOME_EXPORT_DIR (used as
 # a shared home directory for all users), and also NFS_DATASETS_EXPORT_DIR
 # (mount point for CloudLab datasets to which cluster nodes need shared access).
-if [ $(hostname --short) == HOSTNAME_JUMPHOST ]
+if [ $(hostname --short) == "$HOSTNAME_JUMPHOST" ]
 then
   echo -e "\n===== SETTING UP NFS EXPORTS ON NFS ====="
   # Make the file system rwx by all.
@@ -187,8 +187,8 @@ done
 
 # NFS clients setup (all servers are NFS clients).
 echo -e "\n===== SETTING UP NFS CLIENT ====="
-nfs_clan_ip=`grep "nfs-clan" /etc/hosts | cut -d$'\t' -f1`
-my_clan_ip=`grep "$(hostname --short)-clan" /etc/hosts | cut -d$'\t' -f1`
+nfs_clan_ip=`grep "jumphost-core" /etc/hosts | cut -d$'\t' -f1`
+my_clan_ip=`grep "$(hostname --short)-tor" /etc/hosts | cut -d$'\t' -f1`
 mkdir $SHARED_HOME_DIR; mount -t nfs4 $nfs_clan_ip:$NFS_SHARED_HOME_EXPORT_DIR $SHARED_HOME_DIR
 echo "$nfs_clan_ip:$NFS_SHARED_HOME_EXPORT_DIR $SHARED_HOME_DIR nfs4 rw,sync,hard,intr,addr=$my_clan_ip 0 0" >> /etc/fstab
 
@@ -198,7 +198,7 @@ echo "$nfs_clan_ip:$NFS_DATASETS_EXPORT_DIR $DATASETS_DIR nfs4 rw,sync,hard,intr
 
 
 # jumphost specific configuration.
-if [ $(hostname --short) == HOSTNAME_JUMPHOST ]
+if [ $(hostname --short) == "$HOSTNAME_JUMPHOST" ]
 then
 
   echo -e "\n===== SETTING UP AUTOMATIC TMUX ON JUMPHOST ====="
