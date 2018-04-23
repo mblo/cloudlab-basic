@@ -62,9 +62,17 @@ pc.defineParameter("local_storage_size", "Size of Node Local Storage Partition",
         portal.ParameterType.STRING, "20GB", [],
         "Size of local disk partition to allocate for node-local storage.")
 
-pc.defineParameter("dataset_urn", "Datasets",
+# Size of partition to allocate for NFS shared home directories.
+pc.defineParameter("nfs_storage_size", "Size of NFS Shared Storage",
+        portal.ParameterType.STRING, "50GB", [],
+        "Size of disk partition to allocate on NFS server.")
+
+# Datasets to connect to the cluster (shared via NFS).
+pc.defineParameter("dataset_urns", "datasets",
         portal.ParameterType.STRING, "", None,
-        "Dataset to mount.")
+        "Space separated list of datasets to mount. All datasets are " +\
+        "first mounted on the NFS server at /remote, and then mounted via " +\
+        "NFS on all other nodes at /datasets/dataset-name")
 
 params = pc.bindParameters()
 
@@ -75,7 +83,6 @@ if params.num_tor < 2 or (params.num_tor % 2) != 0:
 request = pc.makeRequestRSpec()
 
 # Create a dedicated network for the experiment
-
 tors = []
 for i in range(params.num_tor):
     testlan = request.LAN("tor%02d" % (i+1))
@@ -83,7 +90,7 @@ for i in range(params.num_tor):
     testlan.vlan_tagging = False
     testlan.link_multiplexing = True
     testlan.trivial_ok = True
-    testlan.bandwidth = 100
+    testlan.bandwidth = "1G"
     testlan.latency = 0.08
     tors.append(testlan)
 
@@ -92,8 +99,26 @@ core.best_effort = True
 core.vlan_tagging = False
 core.link_multiplexing = True
 core.trivial_ok = True
-core.bandwidth = 100
+core.bandwidth = "1G"
 core.latency = 0.1
+
+# Create array of the requested datasets
+dataset_urns = []
+if (params.dataset_urns != ""):
+    dataset_urns = params.dataset_urns.split(" ")
+
+nfs_datasets_export_dir = "/remote"
+
+# Add datasets to the dataset-lan
+for i in range(len(dataset_urns)):
+    dataset_urn = dataset_urns[i]
+    dataset_name = dataset_urn[dataset_urn.rfind("+") + 1:]
+    rbs = request.RemoteBlockstore(
+            "dataset%02d" % (i + 1),
+            nfs_datasets_export_dir + "/" + dataset_name,
+            "if1")
+    rbs.dataset = dataset_urn
+    core.addInterface(rbs.interface)
 
 # Setup node names
 HOSTNAME_JUMPHOST = "jumphost"
@@ -113,20 +138,28 @@ for i in range(int(params.num_tor)/2):
 # Setup the cluster one node at a time.
 for idx, host in enumerate(hostnames):
     node = request.RawPC(host)
+    node.hardware_type = params.hardware_type
+    node.disk_image = urn.Image(cloudlab.Utah, "emulab-ops:%s" % params.image)
+
     if (host == HOSTNAME_JUMPHOST):
         # public ipv4
         node.routable_control_ip = True
+
+        nfs_bs = node.Blockstore(host + "_nfs_bs", nfs_shared_home_export_dir)
+        nfs_bs.size = params.nfs_storage_size
+        # Add this node to the dataset blockstore LAN.
+        if (len(dataset_urns) > 0):
+            core.addInterface(node.addInterface("if2"))
+
     else:
         # NO public ipv4
         node.routable_control_ip = False
 
-    node.hardware_type = params.hardware_type
-    node.disk_image = urn.Image(cloudlab.Utah, "emulab-ops:%s" % params.image)
 
     node.addService(pg.Execute(shell="sh",
-        command="sudo /local/repository/system-setup.sh %s %s %s %s" % \
+        command="sudo /local/repository/system-setup.sh %s %s %s %s %s %s" % \
         (node_local_storage_dir, params.username,
-        params.num_worker, len(aggnames))))
+        params.num_worker, len(aggnames), nfs_shared_home_export_dir, nfs_datasets_export_dir)))
 
     # All nodes in the cluster connect to clan.
     n_iface = node.addInterface("exp_iface")
