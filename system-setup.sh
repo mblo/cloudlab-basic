@@ -31,6 +31,8 @@ NFS_DATASETS_EXPORT_DIR=$6
 
 # === Paarameters decided by this script. ===
 # Directory where the NFS partition will be mounted on NFS clients
+SHARED_HOME_DIR=/shome
+# Directory where NFS shared datasets will be mounted on NFS clients
 DATASETS_DIR=/datasets
 
 # Other variables
@@ -64,7 +66,11 @@ fi
 # Common utilities
 echo -e "\n===== INSTALLING COMMON UTILITIES ====="
 apt-get update
-apt-get --assume-yes install vim htop python2.7 python-requests openjdk-8-jre ack-grep python-minimal whois iperf3 nfs-kernel-server nfs-common
+apt-get --assume-yes install mosh vim tmux pdsh tree axel htop ctags whois
+echo -e "\n===== INSTALLING NFS PACKAGES ====="
+apt-get --assume-yes install nfs-kernel-server nfs-common
+echo -e "\n===== INSTALLING basic PACKAGES ====="
+apt-get --assume-yes install python2.7 python-requests openjdk-8-jre ack-grep python-minimal  iperf3
 
 # create new admin user
 useradd -p `mkpasswd "test"` -d /home/"$USER_EXP" -m -g users -s /bin/bash "$USER_EXP"
