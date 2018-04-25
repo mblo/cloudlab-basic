@@ -77,7 +77,7 @@ useradd -p `mkpasswd "test"` -d /home/"$USER_EXP" -m -g users -s /bin/bash "$USE
 passwd -d $USER_EXP
 gpasswd -a $USER_EXP root
 
-chown "$USER_EXP:" "$NODE_LOCAL_STORAGE_DIR"
+chown -R "$USER_EXP:" "$NODE_LOCAL_STORAGE_DIR"
 
 
 # === Configuration settings for all machines ===
@@ -110,6 +110,7 @@ ssh-keygen -y -f $ssh_dir/id_rsa > $ssh_dir/id_rsa.pub
 cat $ssh_dir/id_rsa.pub >> $ssh_dir/authorized_keys
 cat "/users/$CLOUDLAB_USER/.ssh/authorized_keys" >> $ssh_dir/authorized_keys
 chown $USER_EXP: $ssh_dir/authorized_keys
+chown -R $USER_EXP: $ssh_dir
 chmod 644 $ssh_dir/authorized_keys
 
 # Add machines to /etc/hosts

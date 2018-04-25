@@ -59,12 +59,12 @@ pc.defineParameter("num_tor", "Cluster Size (# tor)",
 
 # Size of partition to allocate for local disk storage.
 pc.defineParameter("local_storage_size", "Size of Node Local Storage Partition",
-        portal.ParameterType.STRING, "20GB", [],
+        portal.ParameterType.STRING, "25GB", [],
         "Size of local disk partition to allocate for node-local storage.")
 
 # Size of partition to allocate for NFS shared home directories.
 pc.defineParameter("nfs_storage_size", "Size of NFS Shared Storage",
-        portal.ParameterType.STRING, "50GB", [],
+        portal.ParameterType.STRING, "55GB", [],
         "Size of disk partition to allocate on NFS server.")
 
 # Datasets to connect to the cluster (shared via NFS).
