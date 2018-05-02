@@ -59,12 +59,12 @@ pc.defineParameter("num_tor", "Cluster Size (# tor)",
 
 # Size of partition to allocate for local disk storage.
 pc.defineParameter("local_storage_size", "Size of Node Local Storage Partition",
-        portal.ParameterType.STRING, "25GB", [],
+        portal.ParameterType.STRING, "60GB", [],
         "Size of local disk partition to allocate for node-local storage.")
 
 # Size of partition to allocate for NFS shared home directories.
 pc.defineParameter("nfs_storage_size", "Size of NFS Shared Storage",
-        portal.ParameterType.STRING, "55GB", [],
+        portal.ParameterType.STRING, "60GB", [],
         "Size of disk partition to allocate on NFS server.")
 
 # Datasets to connect to the cluster (shared via NFS).
@@ -89,7 +89,7 @@ for i in range(params.num_tor):
     testlan.best_effort = True
     testlan.vlan_tagging = True
     testlan.link_multiplexing = True
-    testlan.trivial_ok = True
+    testlan.trivial_ok = False
     testlan.bandwidth = "1G"
     testlan.latency = 0.08
     tors.append(testlan)
@@ -98,7 +98,7 @@ core = request.LAN("core")
 core.best_effort = True
 core.vlan_tagging = True
 core.link_multiplexing = True
-core.trivial_ok = True
+core.trivial_ok = False
 core.bandwidth = "1G"
 core.latency = 0.1
 
