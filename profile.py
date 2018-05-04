@@ -90,7 +90,7 @@ for i in range(params.num_tor):
     testlan.vlan_tagging = True
     testlan.link_multiplexing = True
     testlan.trivial_ok = False
-    testlan.bandwidth = "1G"
+    testlan.bandwidth = "1000"
     testlan.latency = 0.08
     tors.append(testlan)
 
@@ -99,7 +99,7 @@ core.best_effort = True
 core.vlan_tagging = True
 core.link_multiplexing = True
 core.trivial_ok = False
-core.bandwidth = "1G"
+core.bandwidth = "1000"
 core.latency = 0.1
 
 # Create a special network for connecting datasets to the nfs server.
