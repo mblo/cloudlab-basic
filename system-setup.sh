@@ -205,15 +205,15 @@ then
 
   chown -R $USER_EXP: "$DATASETS_DIR"
 
-  echo -e "\n===== SETTING UP AUTOMATIC TMUX ON JUMPHOST ====="
-  # Make tmux start automatically when logging into rcmaster
-  cat >> /etc/profile.d/etc.sh <<EOM
-
-if [[ -z "\$TMUX" ]] && [ "\$SSH_CONNECTION" != "" ]
-then
-  tmux attach-session -t ssh_tmux || tmux new-session -s ssh_tmux
-fi
-EOM
+#   echo -e "\n===== SETTING UP AUTOMATIC TMUX ON JUMPHOST ====="
+#   # Make tmux start automatically when logging into rcmaster
+#   cat >> /etc/profile.d/etc.sh <<EOM
+#
+# if [[ -z "\$TMUX" ]] && [ "\$SSH_CONNECTION" != "" ]
+# then
+#   tmux attach-session -t ssh_tmux || tmux new-session -s ssh_tmux
+# fi
+# EOM
 fi
 
 # Mark that setup has finished. This script is actually run again after a
