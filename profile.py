@@ -42,7 +42,7 @@ pc.defineParameter("username", "Username",
 # Default the cluster size to 5 nodes (minimum requires to support a
 # replication factor of 3 and an independent coordinator).
 pc.defineParameter("num_worker", "Cluster Size (# workers)",
-        portal.ParameterType.INTEGER, 6, [],
+        portal.ParameterType.INTEGER, 32, [],
         "Specify the number of worker servers. Note that the total " +\
         "number of servers in the experiment will be this number + #tor-switches/2 + 2 (one " +\
         "additional server which acts as a jumphost and one additional " +\
@@ -52,10 +52,29 @@ pc.defineParameter("num_worker", "Cluster Size (# workers)",
 
 #
 pc.defineParameter("num_tor", "Cluster Size (# tor)",
-        portal.ParameterType.INTEGER, 2, [],
+        portal.ParameterType.INTEGER, 4, [],
         "Specify the number of tor switches. Note that the total " +\
         "number of tor swithces must be a multiple of two. " +\
         "Worker id % #tor gives the tor of a worker" )
+
+
+pc.defineParameter("latency_tor", "Latency of TOR links (in ms)",
+    portal.ParameterType.INTEGER, 3, [],
+    "Specify the latency of all TOR connections. ")
+
+pc.defineParameter("latency_core", "Latency of CORE links (in ms)",
+    portal.ParameterType.INTEGER, 2, [],
+    "Specify the latency of all CORE connections. ")
+
+
+pc.defineParameter("bw_tor", "Link capacity of TOR links",
+    portal.ParameterType.INTEGER, 400, [],
+    "Specify the link capacity of all TOR connections. ")
+
+
+pc.defineParameter("bw_core", "Link capacity of CORE links",
+    portal.ParameterType.INTEGER, 800, [],
+    "Specify the link capacity of all CORE connections. ")
 
 # Size of partition to allocate for local disk storage.
 pc.defineParameter("local_storage_size", "Size of Node Local Storage Partition",
@@ -90,8 +109,8 @@ for i in range(params.num_tor):
     testlan.vlan_tagging = True
     testlan.link_multiplexing = True
     testlan.trivial_ok = False
-    testlan.bandwidth = "1000"
-    testlan.latency = 0.08
+    testlan.bandwidth = params.bw_tor
+    testlan.latency = 0.001 * params.latency_tor
     tors.append(testlan)
 
 core = request.LAN("core")
@@ -99,8 +118,8 @@ core.best_effort = True
 core.vlan_tagging = True
 core.link_multiplexing = True
 core.trivial_ok = False
-core.bandwidth = "1000"
-core.latency = 0.1
+core.bandwidth = params.bw_core
+core.latency = 0.001 * params.latency_core
 
 # Create a special network for connecting datasets to the nfs server.
 dslan = request.LAN("dslan")
